@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}New post — TheBlog{% endblock %}
+
+{% block content %}
+<main class="post-editor-main">
+  <div class="post-editor-container">
+    
+    <header class="post-editor-header">
+      <h1 class="post-editor-title">New post</h1>
+    </header>
+
+    {% if form.non_field_errors %}
+      <div class="messages-container">
+        {% for error in form.non_field_errors %}
+          <div class="alert alert-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'post_create' %}" class="post-editor-form" novalidate>
+      {% csrf_token %}
+
+      <!-- Title Field -->
+      <div class="editor-field-group">
+        <label for="id_title" class="editor-label">Title</label>
+        <input 
+          type="text" 
+          name="title" 
+          id="id_title" 
+          class="editor-input {% if form.title.errors %}has-error{% endif %}"
+          placeholder="A clear, specific title"
+          value="{{ form.title.value|default_if_none:'' }}"
+          required
+          autofocus
+        >
+        {% if form.title.errors %}
+          <p class="field-error-message">{{ form.title.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Category Field -->
+      <div class="editor-field-group">
+        <label for="id_category" class="editor-label">Category</label>
+        <div class="select-wrapper">
+          <select 
+            name="category" 
+            id="id_category" 
+            class="editor-select {% if form.category.errors %}has-error{% endif %}"
+            required
+          >
+            {% for choice_val, choice_label in form.fields.category.choices %}
+              <option value="{{ choice_val }}" {% if form.category.value == choice_val %}selected{% endif %}>
+                {{ choice_label }}
+              </option>
+            {% endfor %}
+          </select>
+          <span class="select-chevron" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </div>
+        {% if form.category.errors %}
+          <p class="field-error-message">{{ form.category.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Content Field -->
+      <div class="editor-field-group">
+        <label for="id_content" class="editor-label">Content</label>
+        <textarea 
+          name="content" 
+          id="id_content" 
+          class="editor-textarea {% if form.content.errors %}has-error{% endif %}"
+          placeholder="Write your post..."
+          required
+        >{{ form.content.value|default_if_none:'' }}</textarea>
+        {% if form.content.errors %}
+          <p class="field-error-message">{{ form.content.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Publish Immediately Checkbox -->
+      <div class="editor-checkbox-group">
+        <label class="custom-checkbox-label">
+          <input 
+            type="checkbox" 
+            name="is_published" 
+            id="id_is_published" 
+            class="checkbox-input"
+            {% if form.is_published.value %}checked{% endif %}
+          >
+          <span class="custom-checkbox-box"></span>
+          <span class="checkbox-text">Publish immediately (otherwise saved as draft)</span>
+        </label>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="editor-actions">
+        <button type="submit" class="btn-primary-action">
+          Save post
+        </button>
+        <a href="{% url 'home' %}" class="btn-secondary-action">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</main>
+{% endblock %}
