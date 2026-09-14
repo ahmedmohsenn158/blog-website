@@ -11,6 +11,8 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     # Blog endpoints
-    path('', views.post_list_view, name='post_list'),
+    path('', views.post_list, name='post_list'),
+    path('home/', views.post_list, name='home'),
+    path('create/', views.post_create, name='post_create'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
 ]

@@ -9,7 +9,6 @@ class RegisterForm(forms.ModelForm):
             'class': 'form-input',
             'autocomplete': 'new-password'
         }),
-        validators=[validate_password],
         help_text="Your password must contain at least 8 characters."
     )
 
@@ -32,11 +31,27 @@ class RegisterForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['email'].required = True
 
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username and User.objects.filter(username__iexact=username).exists():
+            raise ValidationError("A user with that username already exists.")
+        return username
+
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if email and User.objects.filter(email__iexact=email).exists():
             raise ValidationError("An account with this email address already exists.")
         return email
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password')
+        if password:
+            user = User(
+                username=self.cleaned_data.get('username', ''),
+                email=self.cleaned_data.get('email', '')
+            )
+            validate_password(password, user=user)
+        return password
 
     def save(self, commit=True):
         user = super().save(commit=False)
