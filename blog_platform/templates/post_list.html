@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Latest posts — TheBlog{% endblock %}
+
+{% block content %}
+<main class="home-main">
+  <div class="home-container">
+
+    <!-- Hero / Title Section -->
+    <header class="home-header">
+      <h1 class="home-title">Latest posts</h1>
+      <p class="home-subtitle">Everything published by the community, newest first.</p>
+    </header>
+
+    <!-- Filter & Search Toolbar -->
+    <form method="GET" action="{% url 'post_list' %}" class="home-filters-form">
+      
+      <!-- Search Input -->
+      <div class="search-input-wrapper">
+        <span class="search-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          name="q" 
+          placeholder="Search by title" 
+          value="{{ request.GET.q|default:'' }}" 
+          class="filter-search-input"
+          autocomplete="off"
+        >
+      </div>
+
+      <!-- Dropdown Filters Wrapper -->
+      <div class="filter-dropdowns">
+        <!-- Category Filter -->
+        <div class="filter-select-wrapper category-select">
+          <select name="category" class="filter-select" onchange="this.form.submit()">
+            <option value="">All categories</option>
+            {% for cat in categories %}
+              <option value="{{ cat }}" {% if request.GET.category == cat %}selected{% endif %}>
+                {{ cat }}
+              </option>
+            {% endfor %}
+          </select>
+          <span class="filter-chevron" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </div>
+
+        <!-- Sort Select -->
+        <div class="filter-select-wrapper sort-select">
+          <select name="sort" class="filter-select" onchange="this.form.submit()">
+            <option value="newest" {% if request.GET.sort == 'newest' or not request.GET.sort %}selected{% endif %}>Newest first</option>
+            <option value="oldest" {% if request.GET.sort == 'oldest' %}selected{% endif %}>Oldest first</option>
+          </select>
+          <span class="filter-chevron" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </form>
+
+    <!-- Posts Feed List -->
+    <section class="posts-feed">
+      {% for post in posts %}
+        <article class="post-item">
+          <a href="{{ post.get_absolute_url|default:'#' }}" class="post-item-link">
+            <div class="post-item-header">
+              <h2 class="post-item-title">{{ post.title }}</h2>
+              <span class="post-item-arrow" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="7" y1="17" x2="17" y2="7"></line>
+                  <polyline points="7 7 17 7 17 17"></polyline>
+                </svg>
+              </span>
+            </div>
+
+            {% if post.content %}
+              <p class="post-item-excerpt">
+                {{ post.content|striptags|truncatewords:24 }}
+              </p>
+            {% endif %}
+
+            <div class="post-item-meta">
+              <span class="meta-author">{{ post.author.get_full_name|default:post.author.username }}</span>
+              <span class="meta-dot">·</span>
+              {% if post.category %}
+                <span class="meta-category-badge">{{ post.category }}</span>
+                <span class="meta-dot">·</span>
+              {% endif %}
+              <time class="meta-date" datetime="{{ post.created_at|date:'Y-m-d' }}">
+                {{ post.created_at|date:"M j, Y" }}
+              </time>
+            </div>
+          </a>
+        </article>
+      {% empty %}
+        <div class="no-posts-card">
+          <p>No posts found matching your criteria.</p>
+        </div>
+      {% endfor %}
+    </section>
+
+    <!-- Pagination Footer -->
+    {% if page_obj.has_other_pages %}
+      <footer class="pagination-footer">
+        <div class="pagination-count">
+          {{ paginator.count }} post{{ paginator.count|pluralize }} · page {{ page_obj.number }} of {{ paginator.num_pages }}
+        </div>
+
+        <nav class="pagination-controls" aria-label="Posts pagination">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" class="pagination-btn pagination-prev">
+              Prev
+            </a>
+          {% else %}
+            <span class="pagination-btn pagination-prev is-disabled">Prev</span>
+          {% endif %}
+
+          {% for num in paginator.page_range %}
+            {% if page_obj.number == num %}
+              <span class="pagination-num is-active">{{ num }}</span>
+            {% else %}
+              <a href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" class="pagination-num">
+                {{ num }}
+              </a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" class="pagination-btn pagination-next">
+              Next
+            </a>
+          {% else %}
+            <span class="pagination-btn pagination-next is-disabled">Next</span>
+          {% endif %}
+        </nav>
+      </footer>
+    {% endif %}
+
+  </div>
+</main>
+{% endblock %}

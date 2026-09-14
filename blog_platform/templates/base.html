@@ -21,9 +21,9 @@
       
       <!-- Desktop Center Navigation -->
       <nav class="main-nav" aria-label="Main Navigation">
-        <a href="{% url 'post_list' %}" class="nav-link">Posts</a>
+        <a href="{% url 'post_list' %}" class="nav-link {% if request.resolver_match.url_name == 'post_list' %}nav-link--active{% endif %}">Posts</a>
         {% if user.is_authenticated %}
-          <a href="{% url 'dashboard' %}" class="nav-link">My posts</a>
+          <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}nav-link--active{% endif %}">My posts</a>
         {% endif %}
       </nav>
 
