@@ -160,7 +160,7 @@ class PostCreationTests(TestCase):
         self.post_create_url = reverse('post_create')
         self.dashboard_url = reverse('dashboard')
         self.post_list_url = reverse('post_list')
-        self.category = Category.objects.create(name='Technology')
+        self.category, _ = Category.objects.get_or_create(name='Technology')
 
     def generate_test_image(self):
         file = BytesIO()
@@ -251,5 +251,108 @@ class PostCreationTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('title', form.errors)
         self.assertIn('content', form.errors)
+
+
+class PostUpdateAndDeleteTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.author = User.objects.create_user(
+            username='postauthor',
+            email='author@example.com',
+            password='Password123!'
+        )
+        self.other_user = User.objects.create_user(
+            username='otheruser',
+            email='other@example.com',
+            password='Password123!'
+        )
+        self.category, _ = Category.objects.get_or_create(name='Tutorials')
+        self.post = Post.objects.create(
+            title='Initial Post Title',
+            content='Initial post content.',
+            author=self.author,
+            category=self.category,
+            status='draft'
+        )
+        self.edit_url = reverse('post_update', kwargs={'pk': self.post.pk})
+        self.delete_url = reverse('post_delete', kwargs={'pk': self.post.pk})
+        self.dashboard_url = reverse('dashboard')
+
+    def test_post_update_page_loads_for_author(self):
+        """Author can open the post edit page and it renders post_create.html with existing values."""
+        self.client.force_login(self.author)
+        response = self.client.get(self.edit_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'post_create.html')
+        self.assertTrue(response.context['is_edit'])
+        self.assertEqual(response.context['form'].instance, self.post)
+        self.assertContains(response, 'Initial Post Title')
+        self.assertContains(response, 'Initial post content.')
+
+    def test_post_update_login_required(self):
+        """Unauthenticated user cannot access the edit page."""
+        response = self.client.get(self.edit_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response.url)
+
+    def test_post_update_forbidden_for_non_author(self):
+        """Users other than the author receive 403 Forbidden when trying to edit."""
+        self.client.force_login(self.other_user)
+        response = self.client.get(self.edit_url)
+        self.assertEqual(response.status_code, 403)
+
+        response = self.client.post(self.edit_url, data={'title': 'Hacked Title', 'content': 'Hacked'})
+        self.assertEqual(response.status_code, 403)
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.title, 'Initial Post Title')
+
+    def test_post_update_success(self):
+        """Author can update post content, title, and status, with success message and redirect."""
+        self.client.force_login(self.author)
+        payload = {
+            'title': 'Updated Post Title',
+            'content': 'Updated content with new information.',
+            'category': self.category.pk,
+            'is_published': 'on',
+        }
+        response = self.client.post(self.edit_url, data=payload)
+        self.assertRedirects(response, self.dashboard_url)
+
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.title, 'Updated Post Title')
+        self.assertEqual(self.post.content, 'Updated content with new information.')
+        self.assertEqual(self.post.status, 'published')
+        self.assertTrue(self.post.is_published)
+
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any('Updated Post Title' in str(m) and 'updated successfully' in str(m) for m in messages))
+
+    def test_post_delete_login_required(self):
+        """Unauthenticated user cannot delete posts."""
+        response = self.client.post(self.delete_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response.url)
+        self.assertTrue(Post.objects.filter(pk=self.post.pk).exists())
+
+    def test_post_delete_forbidden_for_non_author(self):
+        """Non-author users cannot delete posts (403 Forbidden)."""
+        self.client.force_login(self.other_user)
+        response = self.client.post(self.delete_url)
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Post.objects.filter(pk=self.post.pk).exists())
+
+    def test_post_delete_success(self):
+        """Author can delete their post, showing a success message and redirecting to dashboard."""
+        self.client.force_login(self.author)
+        response = self.client.post(self.delete_url)
+        self.assertRedirects(response, self.dashboard_url)
+
+        # Post is deleted
+        self.assertFalse(Post.objects.filter(pk=self.post.pk).exists())
+
+        # Success message is set
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any('Initial Post Title' in str(m) and 'deleted successfully' in str(m) for m in messages))
+
 
 

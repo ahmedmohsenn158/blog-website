@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import PermissionDenied
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -96,11 +97,45 @@ def post_detail(request, pk):
 
 @login_required
 def post_update(request, pk):
-    return HttpResponse(f"<h1>Edit Post {pk}</h1><p>Coming soon.</p>")
+    post = get_object_or_404(Post, pk=pk)
+
+    # Server-side ownership authorization check
+    if post.author != request.user:
+        raise PermissionDenied("You do not have permission to edit this post.")
+
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES, instance=post)
+        if form.is_valid():
+            updated_post = form.save()
+            messages.success(request, f'Post "{updated_post.title}" was updated successfully!')
+            return redirect('dashboard')
+    else:
+        form = PostForm(instance=post)
+
+    context = {
+        'form': form,
+        'is_edit': True,
+        'post': post,
+    }
+    return render(request, 'post_create.html', context)
 
 
 @login_required
 def post_delete(request, pk):
-    return HttpResponse(f"<h1>Delete Post {pk}</h1><p>Coming soon.</p>")
+    post = get_object_or_404(Post, pk=pk)
+
+    # Server-side ownership authorization check
+    if post.author != request.user:
+        raise PermissionDenied("You do not have permission to delete this post.")
+
+    if request.method == 'POST':
+        title = post.title
+        post.delete()
+        messages.success(request, f'Post "{title}" was deleted successfully.')
+        return redirect('dashboard')
+
+    # If accessed via GET, redirect back to dashboard
+    return redirect('dashboard')
+
 
 

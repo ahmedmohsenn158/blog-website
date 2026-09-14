@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}New post — TheBlog{% endblock %}
+{% block title %}{% if is_edit %}Edit post — TheBlog{% else %}New post — TheBlog{% endif %}{% endblock %}
 
 {% block content %}
 <main class="post-editor-main">
   <div class="post-editor-container">
     
     <header class="post-editor-header">
-      <h1 class="post-editor-title">New post</h1>
+      <h1 class="post-editor-title">{% if is_edit %}Edit post{% else %}New post{% endif %}</h1>
     </header>
 
     {% if form.non_field_errors %}
@@ -18,7 +18,7 @@
       </div>
     {% endif %}
 
-    <form method="POST" action="{% url 'post_create' %}" class="post-editor-form" enctype="multipart/form-data" novalidate>
+    <form method="POST" action="{% if is_edit %}{% url 'post_update' form.instance.pk %}{% else %}{% url 'post_create' %}{% endif %}" class="post-editor-form" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
 
       <!-- Title Field -->
@@ -68,6 +68,12 @@
       <!-- Featured Image Field (Bonus) -->
       <div class="editor-field-group">
         <label for="id_featured_image" class="editor-label">Featured image <span style="font-weight: 400; color: #6B7280; font-size: 13px;">(optional)</span></label>
+        {% if form.instance.featured_image %}
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <img src="{{ form.instance.featured_image.url }}" alt="Current featured image" style="width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid #E5E7EB;">
+            <span style="font-size: 13px; color: #6B7280;">Currently: <a href="{{ form.instance.featured_image.url }}" target="_blank" style="color: #DC2626; text-decoration: none; font-weight: 500;">View full image</a></span>
+          </div>
+        {% endif %}
         <input 
           type="file" 
           name="featured_image" 
@@ -113,9 +119,9 @@
       <!-- Action Buttons -->
       <div class="editor-actions">
         <button type="submit" class="btn-primary-action">
-          Save post
+          {% if is_edit %}Save changes{% else %}Save post{% endif %}
         </button>
-        <a href="{% url 'home' %}" class="btn-secondary-action">
+        <a href="{% url 'dashboard' %}" class="btn-secondary-action">
           Cancel
         </a>
       </div>
