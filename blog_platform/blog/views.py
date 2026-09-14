@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse
-from .forms import RegisterForm
+from .forms import RegisterForm, PostForm
 from .models import Post, Category
 
 def register_view(request):
@@ -62,9 +63,44 @@ def post_list(request):
     return render(request, 'post_list.html', context)
 
 
+@login_required
 def post_create(request):
-    return HttpResponse("<h1>Create Post</h1><p>Coming soon.</p>")
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            messages.success(request, f'Post "{post.title}" created successfully!')
+            return redirect('dashboard')
+    else:
+        form = PostForm()
 
+    return render(request, 'post_create.html', {'form': form})
+
+
+@login_required
 def dashboard_view(request):
-    return HttpResponse("<h1>Dashboard</h1><p>Dashboard coming soon.</p>")
+    posts = Post.objects.filter(author=request.user).select_related('category')
+    draft_count = posts.filter(status='draft').count()
+    context = {
+        'posts': posts,
+        'draft_count': draft_count,
+    }
+    return render(request, 'dashboard.html', context)
+
+
+def post_detail(request, pk):
+    return HttpResponse(f"<h1>Post Detail for {pk}</h1><p>Coming soon.</p>")
+
+
+@login_required
+def post_update(request, pk):
+    return HttpResponse(f"<h1>Edit Post {pk}</h1><p>Coming soon.</p>")
+
+
+@login_required
+def post_delete(request, pk):
+    return HttpResponse(f"<h1>Delete Post {pk}</h1><p>Coming soon.</p>")
+
 

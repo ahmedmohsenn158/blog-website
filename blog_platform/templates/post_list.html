@@ -82,6 +82,12 @@
               </span>
             </div>
 
+            {% if post.featured_image %}
+              <div class="post-item-image-wrapper">
+                <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="post-item-image" loading="lazy">
+              </div>
+            {% endif %}
+
             {% if post.content %}
               <p class="post-item-excerpt">
                 {{ post.content|striptags|truncatewords:24 }}

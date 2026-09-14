@@ -37,6 +37,10 @@ class Post(models.Model):
     def get_absolute_url(self):
         return reverse('post_detail', kwargs={'pk': self.pk})
 
+    @property
+    def is_published(self):
+        return self.status == 'published'
+
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')

@@ -15,4 +15,7 @@ urlpatterns = [
     path('home/', views.post_list, name='home'),
     path('create/', views.post_create, name='post_create'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('posts/<int:pk>/', views.post_detail, name='post_detail'),
+    path('posts/<int:pk>/edit/', views.post_update, name='post_update'),
+    path('posts/<int:pk>/delete/', views.post_delete, name='post_delete'),
 ]

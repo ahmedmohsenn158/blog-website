@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from .models import Post, Category
 
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(
@@ -60,3 +61,51 @@ class RegisterForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class PostForm(forms.ModelForm):
+    is_published = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={'class': 'checkbox-input'})
+    )
+
+    class Meta:
+        model = Post
+        fields = ('title', 'category', 'content', 'featured_image')
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'editor-input',
+                'placeholder': 'A clear, specific title',
+                'autofocus': True
+            }),
+            'category': forms.Select(attrs={
+                'class': 'editor-select'
+            }),
+            'content': forms.Textarea(attrs={
+                'class': 'editor-textarea',
+                'placeholder': 'Write your post...'
+            }),
+            'featured_image': forms.ClearableFileInput(attrs={
+                'class': 'editor-input editor-file-input',
+                'accept': 'image/*'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['title'].required = True
+        self.fields['content'].required = True
+        self.fields['category'].required = False
+        self.fields['category'].empty_label = "Select a category (optional)"
+        self.fields['featured_image'].required = False
+        if self.instance and self.instance.pk:
+            self.fields['is_published'].initial = self.instance.status == 'published'
+
+    def save(self, commit=True):
+        post = super().save(commit=False)
+        is_published = self.cleaned_data.get('is_published', False)
+        post.status = 'published' if is_published else 'draft'
+        if commit:
+            post.save()
+        return post

@@ -18,7 +18,7 @@
       </div>
     {% endif %}
 
-    <form method="POST" action="{% url 'post_create' %}" class="post-editor-form" novalidate>
+    <form method="POST" action="{% url 'post_create' %}" class="post-editor-form" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
 
       <!-- Title Field -->
@@ -47,10 +47,9 @@
             name="category" 
             id="id_category" 
             class="editor-select {% if form.category.errors %}has-error{% endif %}"
-            required
           >
             {% for choice_val, choice_label in form.fields.category.choices %}
-              <option value="{{ choice_val }}" {% if form.category.value == choice_val %}selected{% endif %}>
+              <option value="{{ choice_val }}" {% if form.category.value == choice_val or form.instance.category_id == choice_val %}selected{% endif %}>
                 {{ choice_label }}
               </option>
             {% endfor %}
@@ -63,6 +62,21 @@
         </div>
         {% if form.category.errors %}
           <p class="field-error-message">{{ form.category.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Featured Image Field (Bonus) -->
+      <div class="editor-field-group">
+        <label for="id_featured_image" class="editor-label">Featured image <span style="font-weight: 400; color: #6B7280; font-size: 13px;">(optional)</span></label>
+        <input 
+          type="file" 
+          name="featured_image" 
+          id="id_featured_image" 
+          class="editor-input editor-file-input {% if form.featured_image.errors %}has-error{% endif %}"
+          accept="image/*"
+        >
+        {% if form.featured_image.errors %}
+          <p class="field-error-message">{{ form.featured_image.errors.0 }}</p>
         {% endif %}
       </div>
 
