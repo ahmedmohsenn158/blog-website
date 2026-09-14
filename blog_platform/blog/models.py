@@ -22,6 +22,9 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-created_at']  # Newest posts first
+
     def __str__(self):
         return self.title
 
@@ -31,6 +34,9 @@ class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
 
     def __str__(self):
         return f'Comment by {self.author} on {self.post}'

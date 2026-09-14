@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Log in — TheBlog{% endblock %}
+
+{% block content %}
+<main class="auth-main auth-main--login">
+  <div class="auth-container">
+    
+    <header class="auth-header">
+      <h1 class="login-title">Log in</h1>
+      <p class="login-subtitle">Welcome back.</p>
+    </header>
+
+    {% if form.non_field_errors %}
+      <div class="messages-container">
+        {% for error in form.non_field_errors %}
+          <div class="alert alert-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'login' %}" class="auth-form" novalidate>
+      {% csrf_token %}
+
+      <!-- Username -->
+      <div class="form-group">
+        <label for="id_username" class="form-label">Username</label>
+        <input 
+          type="text" 
+          name="username" 
+          id="id_username" 
+          class="form-input {% if form.username.errors %}has-error{% endif %}"
+          value="{{ form.username.value|default_if_none:'' }}"
+          required 
+          autocomplete="username"
+          autofocus
+        >
+        {% if form.username.errors %}
+          <p class="field-error-message">{{ form.username.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label for="id_password" class="form-label">Password</label>
+        <input 
+          type="password" 
+          name="password" 
+          id="id_password" 
+          class="form-input {% if form.password.errors %}has-error{% endif %}"
+          required 
+          autocomplete="current-password"
+        >
+        {% if form.password.errors %}
+          <p class="field-error-message">{{ form.password.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="btn-submit">
+        Log in
+      </button>
+    </form>
+
+    <p class="login-footer">
+      No account yet? <a href="{% url 'register' %}" class="login-link">Sign up</a>
+    </p>
+
+  </div>
+</main>
+{% endblock %}

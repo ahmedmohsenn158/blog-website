@@ -1,0 +1,112 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TheBlog{% endblock %}</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,700;1,6..72,700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="brand-logo">TheBlog</a>
+      
+      <nav class="main-nav" aria-label="Main Navigation">
+        <a href="{% url 'post_list' %}" class="nav-link">Posts</a>
+      </nav>
+
+      <div class="header-actions">
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard' %}" class="nav-login-link">My Posts</a>
+          <form method="POST" action="{% url 'logout' %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="nav-login-link" style="background:none;border:none;cursor:pointer;font-family:inherit;">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="nav-login-link">Log in</a>
+          <a href="{% url 'register' %}" class="nav-signup-btn">Sign up</a>
+        {% endif %}
+      </div>
+
+      <!-- Mobile Hamburger Toggle Button -->
+      <button class="mobile-menu-toggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-nav">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile Navigation">
+      <div class="mobile-nav-inner">
+        <a href="{% url 'post_list' %}" class="mobile-nav-link">Posts</a>
+        <div class="mobile-nav-divider"></div>
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard' %}" class="mobile-nav-link">My Posts</a>
+          <form method="POST" action="{% url 'logout' %}" class="mobile-nav-form">
+            {% csrf_token %}
+            <button type="submit" class="mobile-nav-link mobile-nav-logout-btn">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="mobile-nav-link">Log in</a>
+          <a href="{% url 'register' %}" class="mobile-nav-signup-btn">Sign up</a>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  {% if messages %}
+  <div style="max-width: 420px; margin: 1.5rem auto 0; padding: 0 1rem;">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  {% block extra_js %}{% endblock %}
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const toggle = document.querySelector('.mobile-menu-toggle');
+      const mobileNav = document.getElementById('mobile-nav');
+      if (toggle && mobileNav) {
+        toggle.addEventListener('click', function() {
+          const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+          toggle.setAttribute('aria-expanded', !isExpanded);
+          toggle.classList.toggle('is-active');
+          mobileNav.classList.toggle('is-open');
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!toggle.contains(e.target) && !mobileNav.contains(e.target) && mobileNav.classList.contains('is-open')) {
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.classList.remove('is-active');
+            mobileNav.classList.remove('is-open');
+          }
+        });
+
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && mobileNav.classList.contains('is-open')) {
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.classList.remove('is-active');
+            mobileNav.classList.remove('is-open');
+            toggle.focus();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
