@@ -7,8 +7,8 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
-from blog.forms import RegisterForm, PostForm
-from blog.models import Post, Category
+from blog.forms import RegisterForm, PostForm, CommentForm
+from blog.models import Post, Category, Comment
 
 class RegistrationTests(TestCase):
     def setUp(self):
@@ -353,6 +353,177 @@ class PostUpdateAndDeleteTests(TestCase):
         # Success message is set
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any('Initial Post Title' in str(m) and 'deleted successfully' in str(m) for m in messages))
+
+
+class PostDetailAndCommentTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.author = User.objects.create_user(
+            username='postauthor',
+            email='postauthor@example.com',
+            password='Password123!'
+        )
+        self.user1 = User.objects.create_user(
+            username='alice',
+            email='alice@example.com',
+            password='Password123!'
+        )
+        self.user2 = User.objects.create_user(
+            username='bob',
+            email='bob@example.com',
+            password='Password123!'
+        )
+        self.category = Category.objects.create(name='Architecture')
+        self.post = Post.objects.create(
+            title='Understanding Modern Web Architecture',
+            content='Modern web applications require clean separation of concerns and responsive design.',
+            author=self.author,
+            category=self.category,
+            status='published'
+        )
+        self.draft_post = Post.objects.create(
+            title='Top Secret Draft Article',
+            content='Unreleased draft content.',
+            author=self.author,
+            category=self.category,
+            status='draft'
+        )
+        self.comment1 = Comment.objects.create(
+            post=self.post,
+            author=self.user1,
+            content='First insightful comment from Alice.'
+        )
+        self.comment2 = Comment.objects.create(
+            post=self.post,
+            author=self.author,
+            content='Author response thanking Alice.'
+        )
+        self.post_detail_url = reverse('post_detail', kwargs={'pk': self.post.pk})
+        self.draft_detail_url = reverse('post_detail', kwargs={'pk': self.draft_post.pk})
+
+    def test_anonymous_user_can_view_published_post_without_comments(self):
+        """Unauthenticated visitor can view the post, but comments are hidden and a lock prompt is shown."""
+        response = self.client.get(self.post_detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'post_detail.html')
+
+        # Post content must be rendered
+        self.assertContains(response, 'Understanding Modern Web Architecture')
+        self.assertContains(response, 'Modern web applications require clean separation')
+
+        # Comments must NOT be loaded or displayed in HTML
+        self.assertIsNone(response.context['comments'])
+        self.assertIsNone(response.context['comment_form'])
+        self.assertNotContains(response, 'First insightful comment from Alice.')
+        self.assertNotContains(response, 'Author response thanking Alice.')
+
+        # Locked callout must be displayed with login and register links
+        self.assertContains(response, 'Comments are restricted to members')
+        self.assertContains(response, reverse('login'))
+        self.assertContains(response, reverse('register'))
+
+    def test_anonymous_user_cannot_post_comment(self):
+        """Unauthenticated user submitting comment is redirected to login page without creating comment."""
+        initial_count = Comment.objects.count()
+        payload = {'content': 'Spam or unauthorized comment'}
+        response = self.client.post(self.post_detail_url, data=payload)
+
+        # Should redirect to login with next parameter
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response.url)
+        self.assertIn(f'next={self.post_detail_url}', response.url)
+        self.assertEqual(Comment.objects.count(), initial_count)
+
+    def test_authenticated_user_can_view_post_and_comments(self):
+        """Signed-in user can view post details, all comments, and the comment form."""
+        self.client.force_login(self.user1)
+        response = self.client.get(self.post_detail_url)
+        self.assertEqual(response.status_code, 200)
+
+        # Context has comments and form
+        self.assertIsNotNone(response.context['comments'])
+        self.assertEqual(len(response.context['comments']), 2)
+        self.assertIsInstance(response.context['comment_form'], CommentForm)
+
+        # HTML displays comments
+        self.assertContains(response, 'First insightful comment from Alice.')
+        self.assertContains(response, 'Author response thanking Alice.')
+        self.assertContains(response, 'Responding as')
+        self.assertContains(response, 'Post comment')
+
+        # Gated callout is not rendered
+        self.assertNotContains(response, 'Comments are restricted to members')
+
+    def test_authenticated_user_can_post_valid_comment(self):
+        """Signed-in user can submit a comment successfully."""
+        self.client.force_login(self.user2)
+        payload = {'content': 'Bob comments: Great article! Loved the insights.'}
+        response = self.client.post(self.post_detail_url, data=payload)
+
+        self.assertRedirects(response, self.post_detail_url)
+
+        new_comment = Comment.objects.filter(author=self.user2, post=self.post).first()
+        self.assertIsNotNone(new_comment)
+        self.assertEqual(new_comment.content, 'Bob comments: Great article! Loved the insights.')
+
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any('Your comment has been posted!' in str(m) for m in messages))
+
+    def test_comment_empty_or_whitespace_rejected(self):
+        """Submitting an empty or whitespace-only comment fails validation."""
+        self.client.force_login(self.user1)
+        initial_count = Comment.objects.count()
+        payload = {'content': '    '}
+        response = self.client.post(self.post_detail_url, data=payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('content', response.context['comment_form'].errors)
+        self.assertEqual(Comment.objects.count(), initial_count)
+
+    def test_comment_author_can_delete_their_comment(self):
+        """The user who authored the comment can delete it."""
+        self.client.force_login(self.user1)
+        delete_url = reverse('comment_delete', kwargs={'pk': self.comment1.pk})
+        response = self.client.post(delete_url)
+
+        self.assertRedirects(response, self.post_detail_url)
+        self.assertFalse(Comment.objects.filter(pk=self.comment1.pk).exists())
+
+    def test_post_author_can_delete_comment_on_their_post(self):
+        """The author of the post can delete any comment on their post."""
+        self.client.force_login(self.author)
+        delete_url = reverse('comment_delete', kwargs={'pk': self.comment1.pk})
+        response = self.client.post(delete_url)
+
+        self.assertRedirects(response, self.post_detail_url)
+        self.assertFalse(Comment.objects.filter(pk=self.comment1.pk).exists())
+
+    def test_unauthorized_user_cannot_delete_comment(self):
+        """A user who is neither the comment author nor the post author cannot delete the comment (403)."""
+        self.client.force_login(self.user2)
+        delete_url = reverse('comment_delete', kwargs={'pk': self.comment1.pk})
+        response = self.client.post(delete_url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Comment.objects.filter(pk=self.comment1.pk).exists())
+
+    def test_draft_post_detail_access_control(self):
+        """Author can view draft post detail, but other users and anonymous visitors get 404."""
+        # 1. Author can access draft
+        self.client.force_login(self.author)
+        response = self.client.get(self.draft_detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Top Secret Draft Article')
+
+        # 2. Another authenticated user gets 404
+        self.client.force_login(self.user1)
+        response = self.client.get(self.draft_detail_url)
+        self.assertEqual(response.status_code, 404)
+
+        # 3. Anonymous visitor gets 404
+        self.client.logout()
+        response = self.client.get(self.draft_detail_url)
+        self.assertEqual(response.status_code, 404)
 
 
 

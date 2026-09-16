@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import Post, Category
+from .models import Post, Category, Comment
 
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(
@@ -109,3 +109,24 @@ class PostForm(forms.ModelForm):
         if commit:
             post.save()
         return post
+
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ('content',)
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'class': 'comment-textarea',
+                'placeholder': 'Share your thoughts, ask questions, or contribute to the discussion...',
+                'rows': 3,
+                'aria-label': 'Write a comment',
+                'required': True,
+            }),
+        }
+
+    def clean_content(self):
+        content = self.cleaned_data.get('content', '').strip()
+        if not content:
+            raise forms.ValidationError("Comment cannot be empty.")
+        return content

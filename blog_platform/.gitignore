@@ -222,3 +222,6 @@ __marimo__/
 
 # Database
 db.sqlite3
+
+# Media
+media/

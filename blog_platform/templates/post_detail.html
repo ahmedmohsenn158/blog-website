@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} — TheBlog{% endblock %}
+
+{% block content %}
+<main class="post-detail-main">
+  <div class="post-detail-container">
+
+    <!-- Back Navigation -->
+    <nav class="post-detail-nav" aria-label="Breadcrumb">
+      <a href="{% url 'post_list' %}" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back to posts</span>
+      </a>
+    </nav>
+
+    <!-- Post Article -->
+    <article class="post-detail-article">
+      <header class="post-detail-header">
+        {% if post.category %}
+          <span class="post-detail-category">{{ post.category.name }}</span>
+        {% endif %}
+
+        <h1 class="post-detail-title">{{ post.title }}</h1>
+
+        <div class="post-detail-meta">
+          <div class="post-detail-author-row">
+            <div class="avatar-badge post-author-avatar">
+              <span>{{ post.author.username|slice:":2"|upper }}</span>
+            </div>
+            <div class="post-author-info">
+              <span class="post-author-name">{{ post.author.get_full_name|default:post.author.username }}</span>
+              <div class="post-meta-sub">
+                <time datetime="{{ post.created_at|date:'Y-m-d' }}" class="post-date">
+                  {{ post.created_at|date:"F j, Y" }}
+                </time>
+                {% if post.status == 'draft' %}
+                  <span class="meta-dot">·</span>
+                  <span class="badge-draft">Draft</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          {% if user.is_authenticated and user == post.author %}
+            <div class="post-author-actions">
+              <a href="{% url 'post_update' post.pk %}" class="action-btn action-edit-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                Edit
+              </a>
+              <form method="POST" action="{% url 'post_delete' post.pk %}" onsubmit="return confirm('Are you sure you want to delete this post? This action cannot be undone.');" class="action-delete-form">
+                {% csrf_token %}
+                <button type="submit" class="action-btn action-delete-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  Delete
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      </header>
+
+      {% if post.featured_image %}
+        <div class="post-detail-featured-image-box">
+          <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="post-detail-featured-image">
+        </div>
+      {% endif %}
+
+      <div class="post-detail-body">
+        {{ post.content|linebreaks }}
+      </div>
+    </article>
+
+    <!-- Comments & Discussion Section -->
+    <section class="comments-section" id="comments" aria-label="Comments discussion">
+      <div class="comments-section-header">
+        <h2 class="comments-section-title">
+          Discussion
+          {% if user.is_authenticated %}
+            <span class="comments-count-pill">{{ comments|length }}</span>
+          {% endif %}
+        </h2>
+      </div>
+
+      {% if user.is_authenticated %}
+        <!-- Comment Creation Form -->
+        <div class="comment-form-card">
+          <form method="POST" action="{% url 'post_detail' post.pk %}" class="comment-create-form">
+            {% csrf_token %}
+            <div class="comment-form-user-bar">
+              <div class="avatar-badge comment-form-avatar">
+                <span>{{ user.username|slice:":2"|upper }}</span>
+              </div>
+              <span class="comment-form-author-label">Responding as <strong>{{ user.username }}</strong></span>
+            </div>
+            
+            <div class="comment-textarea-wrap">
+              {{ comment_form.content }}
+              {% if comment_form.content.errors %}
+                <div class="comment-error">
+                  {{ comment_form.content.errors.0 }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="comment-form-footer">
+              <button type="submit" class="comment-submit-button">
+                Post comment
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Comments List Stream -->
+        <div class="comments-stream">
+          {% if comments %}
+            {% for comment in comments %}
+              <article class="comment-card" id="comment-{{ comment.pk }}">
+                <header class="comment-card-header">
+                  <div class="comment-card-author-meta">
+                    <div class="avatar-badge comment-card-avatar">
+                      <span>{{ comment.author.username|slice:":2"|upper }}</span>
+                    </div>
+                    <div class="comment-card-names">
+                      <span class="comment-author-display">
+                        {{ comment.author.get_full_name|default:comment.author.username }}
+                      </span>
+                      {% if comment.author == post.author %}
+                        <span class="comment-badge-author">Author</span>
+                      {% endif %}
+                    </div>
+                    <span class="meta-dot">·</span>
+                    <time class="comment-timestamp" datetime="{{ comment.created_at|date:'c' }}">
+                      {{ comment.created_at|date:"M j, Y, g:i a" }}
+                    </time>
+                  </div>
+
+                  {% if user == comment.author or user == post.author %}
+                    <form method="POST" action="{% url 'comment_delete' comment.pk %}" class="comment-delete-form" onsubmit="return confirm('Are you sure you want to delete this comment?');">
+                      {% csrf_token %}
+                      <button type="submit" class="comment-delete-button" title="Delete comment" aria-label="Delete comment">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Delete
+                      </button>
+                    </form>
+                  {% endif %}
+                </header>
+
+                <div class="comment-card-content">
+                  {{ comment.content|linebreaks }}
+                </div>
+              </article>
+            {% endfor %}
+          {% else %}
+            <div class="empty-comments-state">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <p class="empty-comments-text">No comments yet. Share your thoughts and start the discussion!</p>
+            </div>
+          {% endif %}
+        </div>
+
+      {% else %}
+        <!-- Unauthenticated Callout Card: Comments are gated -->
+        <div class="comments-locked-card">
+          <div class="comments-locked-icon-wrapper" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E0001A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3 class="comments-locked-title">Comments are restricted to members</h3>
+          <p class="comments-locked-desc">
+            Sign in or create an account to view and participate in the discussion on this post.
+          </p>
+          <div class="comments-locked-actions">
+            <a href="{% url 'login' %}?next={{ request.path }}" class="locked-action-login">Log in</a>
+            <a href="{% url 'register' %}" class="locked-action-signup">Sign up</a>
+          </div>
+        </div>
+      {% endif %}
+
+    </section>
+
+  </div>
+</main>
+{% endblock %}
+
